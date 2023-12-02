@@ -1,7 +1,8 @@
 const openai = require('../config/openai.config.js')
 const OpenAI = require("openai");
 
-const generateMeta = async (title) => {
+const generateMeta = async (req, res) => {
+    const {title} = req.body
     try {
         const description = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
@@ -12,7 +13,21 @@ const generateMeta = async (title) => {
             max_tokens: 100
         });
 
-        console.log(description.choices[0].message);
+        const tags = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{
+                role: 'user',
+                content: `Come up 10 keywords for a YouTube video called ${title}`
+            }],
+            max_tokens: 100
+        });
+
+        res.status(200).json(
+            {
+                description: description.choices[0].message,
+                tags: tags.choices[0].message
+            }
+        )
     } catch (error) {
         if (error instanceof OpenAI.APIError) {
             console.error("AI err " + error.status);  // HTTP status code, e.g., 400
@@ -24,15 +39,17 @@ const generateMeta = async (title) => {
         }
     }
 }
-const generateImage = async (desc) => {
+const generateImage = async (req, res) => {
     try {
         const image = await openai.images.generate({
-            model: "dall-e-3",
-            prompt: desc,
+            model: "gpt-3.5-turbo",
+            prompt: req.body.prompt,
             n: 1,
             size: "512x512"
         })
-        console.log(image.data[0].url)
+        res.json({
+            url: image.data[0].url
+        })
     } catch (error) {
         if (error instanceof OpenAI.APIError) {
             console.error('AI err:\n ' + error.status);  // e.g. 401
